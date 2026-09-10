@@ -3,7 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 const links = [
-  ['/', '⌂', 'Command overview'], ['/workflow', '◇', 'Planning workflow'], ['/network', '⌘', 'Network overview'], ['/maintenance', '⌁', 'Maintenance demand'],
+  ['/', '⌂', 'Command overview'], ['/workflow', '◇', 'Planning workflow'], ['/intelligence', '✦', 'AI intelligence'], ['/network', '⌘', 'Network overview'], ['/maintenance', '⌁', 'Maintenance demand'],
   ['/plans', '≡', 'Candidate plans'], ['/simulation', '◌', 'Simulation results'],
   ['/risk', '◒', 'Risk dashboard'], ['/gati', '↗', 'GATI dashboard'],
   ['/gemini', '✦', 'Gemini assistant'], ['/reports', '▤', 'Reports'],

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/authenticate.js';
+import { analyzeRiskController, explanationController, simulateController } from '../controllers/intelligenceController.js';
 import { authorize } from '../middleware/authorize.js';
 import { adminController, auditController, createPlanController, deletePlanController, notificationReadController, notificationsController, planController, plansController, reportController, statusController, tasksController, updatePlanController, workflowOverviewController } from '../controllers/operationalController.js';
 
@@ -7,6 +8,9 @@ export const operationalRoutes = Router();
 operationalRoutes.use(authenticate);
 operationalRoutes.get('/tasks', tasksController);
 operationalRoutes.get('/workflow/overview', workflowOverviewController);
+operationalRoutes.post('/intelligence/simulations', simulateController);
+operationalRoutes.post('/intelligence/risk-analysis', analyzeRiskController);
+operationalRoutes.post('/intelligence/explanations', explanationController);
 operationalRoutes.get('/planning-runs/:runId/plans', plansController);
 operationalRoutes.get('/plans/:planId', planController);
 operationalRoutes.post('/plans', createPlanController);

@@ -2,6 +2,9 @@ import { api } from './client.js';
 
 export const operationsApi = {
   workflowOverview: (params = {}) => api.get('/workflow/overview', { params }),
+  simulate: (payload) => api.post('/intelligence/simulations', payload),
+  analyzeRisk: (outcomes) => api.post('/intelligence/risk-analysis', { outcomes }),
+  explanation: (payload) => api.post('/intelligence/explanations', payload),
   tasks: (params = {}) => api.get('/tasks', { params }),
   plans: (runId, params = {}) => api.get(`/planning-runs/${runId}/plans`, { params }),
   plan: (id) => api.get(`/plans/${id}`),

@@ -18,5 +18,6 @@ export const operationsApi = {
   notifications: (params = {}) => api.get('/notifications', { params }),
   markNotificationRead: (id) => api.post(`/notifications/${id}/read`),
   users: (params = {}) => api.get('/users', { params }),
+  datasetStatus: () => api.get('/admin/dataset-status'),
   audit: (params = {}) => api.get('/audit-logs', { params })
 };

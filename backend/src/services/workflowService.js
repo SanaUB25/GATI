@@ -5,6 +5,7 @@ import { MaintenanceTask } from '../models/MaintenanceTask.js';
 import { SimulationResult, RiskReport, Approval } from '../models/DecisionEvidence.js';
 import { Notification, AuditLog } from '../models/OperationalModels.js';
 import { aiRequest } from './aiEngineService.js';
+import { listScenarioDelays } from './operationalService.js';
 
 const metricMap = (m = {}) => ({ meanDelay: m.mean_delay, p95Delay: m.p95_delay, cvar10: m.cvar10_delay, cascadeProbability: m.cascade_probability, emergencyRate: m.emergency_rate, gati: m.gati });
 const lifecycle = { DRAFT: ['GENERATED'], GENERATED: ['SIMULATION_COMPLETE'], SIMULATION_COMPLETE: ['RISK_APPROVED'], RISK_APPROVED: ['CTO_REVIEW'], CTO_REVIEW: ['APPROVED'], APPROVED: ['PUBLISHED'], PUBLISHED: ['ARCHIVED'] };
@@ -17,7 +18,8 @@ export async function executeWorkflow(input, actorId, requestId) {
   const run = await PlanningRun.create({ corridorId, horizon: input.horizon || { from: new Date(), to: new Date(Date.now() + 7 * 86400000) }, status: 'RUNNING', scenarioCount: input.scenarioCount || 1000, configVersion: 'v1' });
   try {
     const aiTasks = tasks.map((task) => ({ id: String(task._id || task.id), duration_min: task.durationMin ?? task.duration_min, priority_score: task.priorityScore ?? task.priority_score ?? 0, criticality: task.criticality ?? 1, severity: task.severity ?? 1, overdue_days: task.overdueDays ?? 0, weather_risk: task.weatherRisk ?? 0, asset_importance: task.assetImportance ?? 1, corridor_id: task.corridorId ?? corridorId, resources: task.resources ?? [], resource: task.resource ?? 'track' }));
-    const result = await aiRequest('/v1/workflow/run', { tasks: aiTasks, windows: input.windows, scenario_count: input.scenarioCount || 1000, seed: input.seed || 42, time_limit_seconds: input.timeLimitSeconds || 30 });
+    const scenarioDelays = await listScenarioDelays(input.scenarioCount || 1000);
+    const result = await aiRequest('/v1/workflow/run', { tasks: aiTasks, windows: input.windows, scenario_count: input.scenarioCount || 1000, seed: input.seed || 42, time_limit_seconds: input.timeLimitSeconds || 30, scenario_delays: scenarioDelays });
     if (!result.plans?.length) { const error = new Error('Optimizer found no feasible candidate plans'); error.statusCode = 422; throw error; }
     const persist = async (session) => {
       const options = session ? { session } : undefined;

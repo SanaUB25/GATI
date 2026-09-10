@@ -1,4 +1,8 @@
 import 'dotenv/config';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 
 const required = ['JWT_ACCESS_SECRET'];
 for (const key of required) {
@@ -12,5 +16,6 @@ export const env = {
   jwtSecret: process.env.JWT_ACCESS_SECRET,
   jwtTtl: process.env.JWT_ACCESS_TTL ?? '15m',
   aiEngineBaseUrl: process.env.AI_ENGINE_BASE_URL ?? 'http://localhost:8000',
-  corsOrigins: (process.env.CORS_ORIGINS ?? 'http://localhost:5173').split(',')
+  corsOrigins: (process.env.CORS_ORIGINS ?? 'http://localhost:5173').split(','),
+  dataDir: path.resolve(process.env.DATA_DIR ?? path.join(projectRoot, 'data', 'raw'))
 };

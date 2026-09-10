@@ -9,7 +9,7 @@ from services.calibration import calibrate
 from services.report_generator import generate_report
 from services.explainability_service import explain
 from services.gemini_service import GeminiService
-from services.scenario_simulator import simulate_delays
+from services.scenario_simulator import simulate_delays, simulate_imported_scenarios
 from services.priority_engine import calculate_priority
 from services.block_bundler import bundle_tasks
 from services.conflict_shield import detect_conflicts
@@ -39,6 +39,7 @@ class SimulationRequest(BaseModel):
     base_delay: float = Field(gt=0)
     count: int = Field(default=1000, ge=1, le=10000)
     seed: int = Field(default=42, ge=0)
+    scenario_delays: list[dict] = Field(default_factory=list)
 
 class PriorityRequest(BaseModel):
     criticality: float = Field(ge=0)
@@ -62,6 +63,7 @@ class WorkflowRequest(BaseModel):
     scenario_count: int = Field(default=1000, ge=1, le=10000)
     seed: int = Field(default=42, ge=0)
     time_limit_seconds: int = Field(default=30, ge=1, le=300)
+    scenario_delays: list[dict] = Field(default_factory=list)
 
 @app.get('/health')
 def health():
@@ -78,7 +80,8 @@ def risk(outcomes: list[float]):
 
 @app.post('/v1/simulations')
 def simulations(request: SimulationRequest):
-    return {'outcomes': simulate_delays(request.base_delay, request.count, request.seed), 'count': request.count, 'seed': request.seed}
+    outcomes = simulate_imported_scenarios(request.base_delay, request.scenario_delays[:request.count]) if request.scenario_delays else simulate_delays(request.base_delay, request.count, request.seed)
+    return {'outcomes': outcomes, 'count': len(outcomes), 'seed': request.seed, 'source': 'mongodb-scenarios' if request.scenario_delays else 'generated'}
 
 @app.post('/v1/priority')
 def priority(request: PriorityRequest):
@@ -124,7 +127,8 @@ def workflow_run(request: WorkflowRequest):
     for index, candidate in enumerate(candidates):
         assignments = candidate['assignments']
         assigned = [task for task in scored_tasks if any(item['task_id'] == task['id'] for item in assignments)]
-        outcomes = simulate_delays(max(sum(task['duration_min'] for task in assigned), 1), request.scenario_count, request.seed + index)
+        base_delay = max(sum(task['duration_min'] for task in assigned), 1)
+        outcomes = simulate_imported_scenarios(base_delay, request.scenario_delays[:request.scenario_count]) if request.scenario_delays else simulate_delays(base_delay, request.scenario_count, request.seed + index)
         metrics = summarize_outcomes(outcomes)
         metrics['gati'] = calculate_gati(metrics['mean_delay'], metrics['cvar10_delay'])
         plans.append({**candidate, 'metrics': metrics, 'outcomes': outcomes, 'blocks': [{'window_id': item['window_id'], 'task_ids': [item['task_id']]} for item in assignments]})

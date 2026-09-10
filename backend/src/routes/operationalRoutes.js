@@ -1,0 +1,20 @@
+import { Router } from 'express';
+import { authenticate } from '../middleware/authenticate.js';
+import { authorize } from '../middleware/authorize.js';
+import { adminController, auditController, createPlanController, deletePlanController, notificationReadController, notificationsController, planController, plansController, reportController, statusController, tasksController, updatePlanController, workflowOverviewController } from '../controllers/operationalController.js';
+
+export const operationalRoutes = Router();
+operationalRoutes.use(authenticate);
+operationalRoutes.get('/tasks', tasksController);
+operationalRoutes.get('/workflow/overview', workflowOverviewController);
+operationalRoutes.get('/planning-runs/:runId/plans', plansController);
+operationalRoutes.get('/plans/:planId', planController);
+operationalRoutes.post('/plans', createPlanController);
+operationalRoutes.patch('/plans/:planId', updatePlanController);
+operationalRoutes.delete('/plans/:planId', deletePlanController);
+operationalRoutes.post('/plans/:planId/status', statusController);
+operationalRoutes.get('/notifications', notificationsController);
+operationalRoutes.post('/notifications/:notificationId/read', notificationReadController);
+operationalRoutes.get('/reports', reportController);
+operationalRoutes.get('/admin/:type', authorize('ADMIN', 'CONTROL_OFFICER'), adminController);
+operationalRoutes.get('/audit-logs', authorize('ADMIN', 'CONTROL_OFFICER'), auditController);

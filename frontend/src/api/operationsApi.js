@@ -1,6 +1,7 @@
 import { api } from './client.js';
 
 export const operationsApi = {
+  workflowOverview: (params = {}) => api.get('/workflow/overview', { params }),
   tasks: (params = {}) => api.get('/tasks', { params }),
   plans: (runId, params = {}) => api.get(`/planning-runs/${runId}/plans`, { params }),
   plan: (id) => api.get(`/plans/${id}`),

@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 const planSchema = new mongoose.Schema({
   runId: { type: mongoose.Schema.Types.ObjectId, ref: 'PlanningRun', required: true, index: true },
   name: { type: String, required: true },
-  status: { type: String, enum: ['DRAFT', 'GENERATED', 'SIMULATION_COMPLETE', 'RISK_APPROVED', 'CTO_REVIEW', 'APPROVED', 'PUBLISHED', 'ARCHIVED', 'EXECUTING', 'COMPLETED', 'REPAIRED'], default: 'DRAFT' },
+  status: { type: String, enum: ['DRAFT', 'RISKCLOCK_COMPLETE', 'BUNDLING_COMPLETE', 'CONFLICT_CHECKED', 'OPTIMIZED', 'SIMULATION_COMPLETE', 'APPROVED', 'PUBLISHED', 'ARCHIVED', 'EXECUTING', 'COMPLETED', 'REPAIRED'], default: 'DRAFT' },
   blocks: [{ windowId: String, taskIds: [String], start: Date, end: Date }],
   metrics: { meanDelay: Number, p95Delay: Number, cvar10: Number, cascadeProbability: Number, emergencyRate: Number, gati: Number },
   solver: { status: String, objective: Number, timeSeconds: Number },

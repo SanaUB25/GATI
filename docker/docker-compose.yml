@@ -1,0 +1,29 @@
+services:
+  mongodb:
+    image: mongo:8
+    ports: ['27017:27017']
+    volumes: [railvista-mongo:/data/db]
+  ai-engine:
+    build:
+      context: ..
+      dockerfile: docker/ai-engine.Dockerfile
+    ports: ['8000:8000']
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/backend.Dockerfile
+    environment:
+      MONGODB_URI: mongodb://mongodb:27017/railvista
+      JWT_ACCESS_SECRET: local-development-secret-change-me
+      AI_ENGINE_BASE_URL: http://ai-engine:8000
+      CORS_ORIGINS: http://localhost
+    depends_on: [mongodb, ai-engine]
+    ports: ['4000:4000']
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/frontend.Dockerfile
+    depends_on: [backend]
+    ports: ['80:80']
+volumes:
+  railvista-mongo:

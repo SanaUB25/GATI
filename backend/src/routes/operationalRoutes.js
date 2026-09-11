@@ -4,7 +4,7 @@ import { analyzeRiskController, explanationController, simulateController } from
 import { authorize } from '../middleware/authorize.js';
 import { body } from 'express-validator';
 import { validateRequest } from '../middleware/validateRequest.js';
-import { adminController, auditController, createPlanController, deletePlanController, notificationReadController, notificationsController, planController, plansController, reportController, riskController, simulationController, statusController, tasksController, updatePlanController, workflowOverviewController } from '../controllers/operationalController.js';
+import { adminController, auditController, createPlanController, deletePlanController, emergencyRepairController, notificationReadController, notificationsController, planController, plansController, reportController, riskController, simulationController, statusController, tasksController, updatePlanController, workflowOverviewController } from '../controllers/operationalController.js';
 
 export const operationalRoutes = Router();
 operationalRoutes.use(authenticate);
@@ -20,7 +20,8 @@ operationalRoutes.get('/plans/:planId/risk', riskController);
 operationalRoutes.post('/plans', createPlanController);
 operationalRoutes.patch('/plans/:planId', updatePlanController);
 operationalRoutes.delete('/plans/:planId', deletePlanController);
-operationalRoutes.post('/plans/:planId/status', body('status').isIn(['GENERATED', 'SIMULATION_COMPLETE', 'RISK_APPROVED', 'CTO_REVIEW', 'APPROVED', 'PUBLISHED', 'ARCHIVED']), validateRequest, statusController);
+operationalRoutes.post('/plans/:planId/status', body('status').isIn(['RISKCLOCK_COMPLETE', 'BUNDLING_COMPLETE', 'CONFLICT_CHECKED', 'OPTIMIZED', 'SIMULATION_COMPLETE', 'APPROVED', 'PUBLISHED', 'ARCHIVED']), validateRequest, statusController);
+operationalRoutes.post('/plans/:planId/emergency-repair', body('taskId').optional().isString(), emergencyRepairController);
 operationalRoutes.get('/notifications', notificationsController);
 operationalRoutes.post('/notifications/:notificationId/read', notificationReadController);
 operationalRoutes.get('/reports', reportController);

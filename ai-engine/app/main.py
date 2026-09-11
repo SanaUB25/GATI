@@ -10,7 +10,7 @@ from services.report_generator import generate_report
 from services.explainability_service import explain
 from services.gemini_service import GeminiService
 from services.scenario_simulator import simulate_delays, simulate_imported_scenarios
-from services.priority_engine import calculate_priority
+from services.priority_engine import calculate_priority, priority_factors
 from services.block_bundler import bundle_tasks
 from services.conflict_shield import detect_conflicts
 from app.errors import register_exception_handlers
@@ -47,6 +47,8 @@ class PriorityRequest(BaseModel):
     overdue_days: float = Field(default=0, ge=0)
     weather_risk: float = Field(default=0, ge=0)
     asset_importance: float = Field(default=1, ge=0)
+    season: str = 'Other'
+    section_importance: float = Field(default=1, ge=0)
 
 class WorkflowTask(Task):
     criticality: float = Field(default=1, ge=0)
@@ -54,6 +56,12 @@ class WorkflowTask(Task):
     overdue_days: float = Field(default=0, ge=0)
     weather_risk: float = Field(default=0, ge=0)
     asset_importance: float = Field(default=1, ge=0)
+    season: str = 'Other'
+    section_importance: float = Field(default=1, ge=0)
+    section_id: str = 'default'
+    department: str = 'UNASSIGNED'
+    earliest_start: int = Field(default=0, ge=0)
+    latest_end: int = Field(default=1440, ge=1)
     corridor_id: str = 'default'
     resources: list[str] = []
 
@@ -64,6 +72,7 @@ class WorkflowRequest(BaseModel):
     seed: int = Field(default=42, ge=0)
     time_limit_seconds: int = Field(default=30, ge=1, le=300)
     scenario_delays: list[dict] = Field(default_factory=list)
+    trains: list[dict] = Field(default_factory=list)
 
 @app.get('/health')
 def health():
@@ -81,11 +90,11 @@ def risk(outcomes: list[float]):
 @app.post('/v1/simulations')
 def simulations(request: SimulationRequest):
     outcomes = simulate_imported_scenarios(request.base_delay, request.scenario_delays[:request.count]) if request.scenario_delays else simulate_delays(request.base_delay, request.count, request.seed)
-    return {'outcomes': outcomes, 'count': len(outcomes), 'seed': request.seed, 'source': 'mongodb-scenarios' if request.scenario_delays else 'generated'}
+    return {'outcomes': outcomes, 'metrics': summarize_outcomes(outcomes, request.scenario_delays), 'count': len(outcomes), 'seed': request.seed, 'source': 'mongodb-scenarios' if request.scenario_delays else 'generated'}
 
 @app.post('/v1/priority')
 def priority(request: PriorityRequest):
-    return {'priority_score': calculate_priority(**request.model_dump())}
+    return {'priority': priority_factors(**request.model_dump())}
 
 @app.post('/v1/bundler')
 def bundler(payload: dict):
@@ -96,7 +105,7 @@ def bundler(payload: dict):
 
 @app.post('/v1/conflict')
 def conflict(payload: dict):
-    return {'conflicts': detect_conflicts(payload.get('assignments', []))}
+    return {'conflicts': detect_conflicts(payload.get('assignments', []), payload.get('trains', []), payload.get('safety_margin_min', 10))}
 
 @app.post('/v1/optimize')
 def optimize(request: PlanningRequest):
@@ -121,18 +130,24 @@ def explain_alias(payload: dict):
 @app.post('/v1/workflow/run')
 def workflow_run(request: WorkflowRequest):
     raw_tasks = [task.model_dump() for task in request.tasks]
-    scored_tasks = [{**task, 'priority_score': calculate_priority(task['criticality'], task['severity'], task['overdue_days'], task['weather_risk'], task['asset_importance'])} for task in raw_tasks]
-    candidates = generate_plans({'tasks': scored_tasks, 'windows': [window.model_dump() for window in request.windows]}, 3, request.time_limit_seconds)
+    scored_tasks = []
+    for task in raw_tasks:
+        scoring = priority_factors(task['criticality'], task['severity'], task['overdue_days'], task['weather_risk'], task['asset_importance'], task['season'], task['section_importance'])
+        scored_tasks.append({**task, 'priority_score': scoring['score'], 'priority_factors': scoring})
+    candidates = generate_plans({'tasks': scored_tasks, 'windows': [window.model_dump() for window in request.windows], 'trains': request.trains}, 3, request.time_limit_seconds)
     plans = []
     for index, candidate in enumerate(candidates):
         assignments = candidate['assignments']
         assigned = [task for task in scored_tasks if any(item['task_id'] == task['id'] for item in assignments)]
         base_delay = max(sum(task['duration_min'] for task in assigned), 1)
         outcomes = simulate_imported_scenarios(base_delay, request.scenario_delays[:request.scenario_count]) if request.scenario_delays else simulate_delays(base_delay, request.scenario_count, request.seed + index)
-        metrics = summarize_outcomes(outcomes)
+        metrics = summarize_outcomes(outcomes, request.scenario_delays[:request.scenario_count])
         metrics['gati'] = calculate_gati(metrics['mean_delay'], metrics['cvar10_delay'])
-        plans.append({**candidate, 'metrics': metrics, 'outcomes': outcomes, 'blocks': [{'window_id': item['window_id'], 'task_ids': [item['task_id']]} for item in assignments]})
-    return {'tasks': scored_tasks, 'bundles': bundle_tasks(scored_tasks), 'conflicts': detect_conflicts([assignment for plan in plans for assignment in plan['assignments']]), 'plans': plans}
+        grouped = {}
+        for item in assignments: grouped.setdefault(item['window_id'], []).append(item['task_id'])
+        plans.append({**candidate, 'metrics': metrics, 'outcomes': outcomes, 'blocks': [{'window_id': window_id, 'task_ids': task_ids} for window_id, task_ids in grouped.items()]})
+    all_assignments = [assignment for plan in plans for assignment in plan['assignments']]
+    return {'tasks': scored_tasks, 'bundles': bundle_tasks(scored_tasks), 'conflicts': detect_conflicts(all_assignments, request.trains), 'plans': plans}
 
 @app.post('/v1/plans/compare')
 def compare(payload: dict):

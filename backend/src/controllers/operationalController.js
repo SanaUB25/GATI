@@ -1,5 +1,7 @@
 import { changePlanStatus, createPlan, deletePlan, getPlan, getWorkflowOverview, listAdminData, listAudit, listNotifications, listPlans, listTasks, markNotificationRead, updatePlan } from '../services/operationalService.js';
+import { repairPlanForEmergency } from '../services/workflowService.js';
 import { evidenceForPlan, transitionPlan } from '../services/workflowService.js';
+import { generateCsvReport } from '../services/reportService.js';
 const send = (req, res, data) => res.json({ data, meta: { requestId: req.id } });
 export async function tasksController(req, res, next) { try { send(req, res, await listTasks(req.query)); } catch (error) { next(error); } }
 export async function plansController(req, res, next) { try { send(req, res, await listPlans(req.params.runId, req.query)); } catch (error) { next(error); } }
@@ -14,5 +16,21 @@ export async function adminController(req, res, next) { try { send(req, res, awa
 export async function auditController(req, res, next) { try { send(req, res, await listAudit(req.query)); } catch (error) { next(error); } }
 export async function simulationController(req, res, next) { try { const [simulation] = await evidenceForPlan(req.params.planId); if (!simulation) return res.status(404).json({ type: 'about:blank', title: 'Not Found', status: 404, detail: 'Simulation result not found' }); send(req, res, simulation); } catch (error) { next(error); } }
 export async function riskController(req, res, next) { try { const [, risk] = await evidenceForPlan(req.params.planId); if (!risk) return res.status(404).json({ type: 'about:blank', title: 'Not Found', status: 404, detail: 'Risk report not found' }); send(req, res, risk); } catch (error) { next(error); } }
-export async function reportController(req, res, next) { try { const plan = req.query.planId ? await getPlan(req.query.planId) : null; const [, risk, approvals] = plan ? await evidenceForPlan(plan._id) : [null, null, []]; const report = { type: req.query.type || 'maintenance', generatedAt: new Date().toISOString(), plan, risk, approvals }; if (req.query.format === 'csv') { const rows = [['field', 'value'], ['type', report.type], ['planId', plan?._id || ''], ['gati', risk?.gati || ''], ['status', plan?.status || '']]; res.type('text/csv').attachment(`${report.type}-report.csv`).send(rows.map((row) => row.map((v) => `"${String(v).replaceAll('"', '""')}"`).join(',')).join('\n')); return; } send(req, res, report); } catch (error) { next(error); } }
+export async function reportController(req, res, next) {
+  try {
+    const report = await generateCsvReport(req.query.type, req.query.corridorId);
+    if (req.query.format !== 'csv') return send(req, res, report.data);
+    res.status(200);
+    res.set({
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': `attachment; filename="${report.filename}"`,
+      'Content-Length': Buffer.byteLength(report.content, 'utf8')
+    });
+    return res.send(report.content);
+  } catch (error) {
+    console.error(`[reports] requestId=${req.id} type=${req.query.type ?? 'maintenance'} failed`, error);
+    return next(error);
+  }
+}
 export async function workflowOverviewController(req, res, next) { try { send(req, res, await getWorkflowOverview(req.query)); } catch (error) { next(error); } }
+export async function emergencyRepairController(req, res, next) { try { send(req, res, await repairPlanForEmergency(req.params.planId, req.body, req.user.sub, req.id)); } catch (error) { next(error); } }

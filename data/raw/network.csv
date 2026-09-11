@@ -1,0 +1,11 @@
+section_id,from_station,to_station,single_line,capacity
+S01,ST01,ST02,False,1
+S02,ST02,ST03,True,1
+S03,ST03,ST04,False,1
+S04,ST04,ST05,True,1
+S05,ST05,ST06,False,1
+S06,ST06,ST07,True,1
+S07,ST07,ST08,False,1
+S08,ST02,ST05,False,1
+S09,ST03,ST06,False,1
+S10,ST05,ST08,True,1

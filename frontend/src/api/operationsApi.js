@@ -15,6 +15,7 @@ export const operationsApi = {
   emergencyRepair: (id, payload) => api.post(`/plans/${id}/emergency-repair`, payload),
   simulations: (planId, params = {}) => api.get(`/plans/${planId}/simulations`, { params }),
   risk: (planId) => api.get(`/plans/${planId}/risk`),
+  schedules: (planId) => api.get(`/plans/${planId}/schedules`),
   reports: (type, params = {}) => api.get('/reports', { params: { type, ...params } }),
   downloadReport: (type) => api.get('/reports', { params: { type, format: 'csv' }, responseType: 'blob' }),
   notifications: (params = {}) => api.get('/notifications', { params }),

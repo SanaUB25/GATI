@@ -1,63 +1,55 @@
 from ortools.sat.python import cp_model
 
+def overlaps(a, b): return max(a['start_min'], b['start_min']) < min(a['end_min'], b['end_min'])
+def freight(section, window, forecasts): return sum(round(float(f.get('capacity_demand',0))*100) for f in forecasts if f.get('section_id') == section and overlaps(window,f))
 
 def generate_plans(payload: dict, plan_count: int = 3, time_limit_seconds: int = 30) -> list[dict]:
-    tasks = payload['tasks']
-    windows = payload['windows']
-    trains = payload.get('trains', [])
-    safety_margin = int(payload.get('safety_margin_min', 10))
-    results = []
-    previous_assignments = []
-    for profile in range(plan_count):
-        model = cp_model.CpModel()
-        choices = {}
-        for task in tasks:
-            for window in windows:
-                in_task_window = window['start_min'] >= task.get('earliest_start', 0) and window['end_min'] <= task.get('latest_end', 1440)
-                train_conflict = any(task.get('section_id') in train.get('route', []) and max(window['start_min'] - safety_margin, train.get('departure', 0)) < min(window['end_min'] + safety_margin, train.get('arrival', 0)) for train in trains)
-                if window['end_min'] - window['start_min'] >= task['duration_min'] and in_task_window and not train_conflict:
-                    choices[(task['id'], window['id'])] = model.NewBoolVar(f"assign_{task['id']}_{window['id']}")
-            task_choices = [value for (task_id, _), value in choices.items() if task_id == task['id']]
-            if task_choices:
-                model.Add(sum(task_choices) <= 1)
-        # CP-SAT hard constraints: the same section/resource cannot occupy a block twice.
-        # Different department resources are allowed in parallel as one bundled block.
-        for window in windows:
-            for left_index, left in enumerate(tasks):
-                for right in tasks[left_index + 1:]:
-                    same_section = left.get('section_id') == right.get('section_id')
-                    shared_resource = bool(set(left.get('resources', [left.get('resource', 'track')])) & set(right.get('resources', [right.get('resource', 'track')])))
-                    if same_section and shared_resource:
-                        a, b = choices.get((left['id'], window['id'])), choices.get((right['id'], window['id']))
-                        if a is not None and b is not None: model.Add(a + b <= 1)
-        if previous_assignments:
-            differences = []
-            for key, variable in choices.items():
-                previous = previous_assignments[-1].get(key, 0)
-                differences.append(variable if previous == 0 else 1 - variable)
-            if differences:
-                model.Add(sum(differences) >= min(2, len(differences)))
-        objective = []
-        for task in tasks:
-            for window in windows:
-                variable = choices.get((task['id'], window['id']))
-                # OR-Tools variables cannot be evaluated as booleans.
-                if variable is not None:
-                    weight = int(task['priority_score'] * 100) - profile * int(task['duration_min'])
-                    objective.append(weight * variable)
-        model.Maximize(sum(objective))
-        solver = cp_model.CpSolver()
-        solver.parameters.max_time_in_seconds = time_limit_seconds
-        status = solver.Solve(model)
-        if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
-            continue
-        assignment = {key: int(solver.Value(variable)) for key, variable in choices.items()}
-        previous_assignments.append(assignment)
-        task_by_id = {task['id']: task for task in tasks}; window_by_id = {window['id']: window for window in windows}
-        assignments = []
-        for (task_id, window_id), value in assignment.items():
-            if value:
-                task, window = task_by_id[task_id], window_by_id[window_id]
-                assignments.append({'task_id': task_id, 'window_id': window_id, 'section_id': task.get('section_id'), 'resources': task.get('resources', [task.get('resource', 'track')]), 'start_min': window['start_min'], 'end_min': window['end_min']})
-        results.append({'id': f'plan_{len(results) + 1}', 'status': 'FEASIBLE', 'assignments': assignments, 'solver_status': solver.StatusName(status), 'objective': solver.ObjectiveValue()})
+    """Schedules task/bundle units only inside persisted non-BLOCKED COA possessions."""
+    tasks=payload['tasks']; windows=[w for w in payload['windows'] if w.get('availability_status','AVAILABLE')!='BLOCKED']; by_id={t['id']:t for t in tasks}
+    units=[{'id':f"task:{t['id']}",'task_ids':[t['id']],'section_id':t.get('section_id'),'duration_min':t['duration_min'],'departments':[t.get('department')],'resources':t.get('resources',[t.get('department')]),'time_saved':0} for t in tasks]
+    for b in payload.get('bundles',[]):
+        members=[by_id[i] for i in b['task_ids'] if i in by_id]
+        if len(members)>1: units.append({'id':b['bundle_id'],'bundle_id':b['bundle_id'],'task_ids':b['task_ids'],'section_id':b['section_id'],'duration_min':b['after_block_minutes'],'departments':b['departments'],'resources':sorted({r for t in members for r in t.get('resources',[t.get('department')])}),'time_saved':b.get('block_time_saved_minutes',0)})
+    profiles=[{'priority':100,'freight':20,'downtime':10},{'priority':75,'freight':65,'downtime':25},{'priority':125,'freight':10,'downtime':45}]; results=[]; previous=[]
+    for p in range(plan_count):
+        weights={**profiles[p%3],**payload.get('tradeoff_weights',{})}; model=cp_model.CpModel(); choices={}
+        for u in units:
+            for w in windows:
+                members=[by_id[i] for i in u['task_ids']]; valid=w.get('section_id')==u['section_id'] and w['end_min']-w['start_min']>=u['duration_min'] and all(w['start_min']>=t.get('earliest_start',0) and w['end_min']<=t.get('latest_end',1440) and t.get('department') in w.get('allowed_departments',['ENGINEERING','SNT','TRD']) for t in members)
+                train=any(u['section_id'] in tr.get('route',[]) and max(w['start_min']-int(payload.get('safety_margin_min',10)),tr.get('departure',0))<min(w['end_min']+int(payload.get('safety_margin_min',10)),tr.get('arrival',0)) for tr in payload.get('trains',[]))
+                if valid and not train: choices[(u['id'],w['id'])]=model.NewBoolVar(f"x_{u['id']}_{w['id']}")
+        for t in tasks:
+            eligible=[v for (uid,_),v in choices.items() if t['id'] in next(u for u in units if u['id']==uid)['task_ids']]
+            if eligible:model.Add(sum(eligible)<=1)
+        # A coordinated bundle is one possession unit; unrelated overlapping
+        # possessions consume the persisted network-section capacity.
+        network={item.get('section_id'): int(item.get('capacity', 1)) for item in payload.get('network', [])}
+        for key,var in choices.items():
+            u=next(x for x in units if x['id']==key[0]); w=next(x for x in windows if x['id']==key[1])
+            occupants=[v for k,v in choices.items() if next(x for x in units if x['id']==k[0])['section_id']==u['section_id'] and overlaps(w,next(x for x in windows if x['id']==k[1]))]
+            if len(occupants)>1:model.Add(sum(occupants)<=network.get(u['section_id'], 1))
+        for dept,capacity in payload.get('resource_capacities',{}).items():
+            for key,var in choices.items():
+                u=next(x for x in units if x['id']==key[0]); w=next(x for x in windows if x['id']==key[1])
+                if dept not in u['resources']:continue
+                same=[v for k,v in choices.items() if dept in next(x for x in units if x['id']==k[0])['resources'] and overlaps(w,next(x for x in windows if x['id']==k[1]))]
+                if len(same)>1:model.Add(sum(same)<=int(capacity))
+        if previous:
+            diff=[v if previous[-1].get(k,0)==0 else 1-v for k,v in choices.items()]
+            if diff:model.Add(sum(diff)>=1)
+        obj=[]
+        for (uid,wid),v in choices.items():
+            u=next(x for x in units if x['id']==uid); w=next(x for x in windows if x['id']==wid); members=[by_id[i] for i in u['task_ids']]
+            priority=sum(float(t.get('priority_score',0)) for t in members); downtime=sum(float(t.get('availability_impact',0))*t['duration_min'] for t in members)
+            obj.append(int(round(weights['priority']*priority+weights['downtime']*downtime+u['time_saved']*50-weights['freight']*freight(u['section_id'],w,payload.get('goods_forecasts',[]))-u['duration_min']))*v)
+        model.Maximize(sum(obj)); solver=cp_model.CpSolver(); solver.parameters.max_time_in_seconds=time_limit_seconds; status=solver.Solve(model)
+        if status not in (cp_model.OPTIMAL,cp_model.FEASIBLE):continue
+        solution={k:int(solver.Value(v)) for k,v in choices.items()}; previous.append(solution); blocks=[]; assignments=[]
+        for (uid,wid),chosen in solution.items():
+            if not chosen:continue
+            u=next(x for x in units if x['id']==uid); w=next(x for x in windows if x['id']==wid); block={'window_id':wid,'bundle_id':u.get('bundle_id'),'task_ids':u['task_ids'],'section_id':u['section_id'],'departments':u['departments'],'start_min':w['start_min'],'end_min':w['start_min']+u['duration_min'],'duration_min':u['duration_min']}; blocks.append(block); assignments += [{'task_id':tid,**block,'resources':u['resources']} for tid in u['task_ids']]
+        # An empty CP-SAT solution is operationally infeasible for a planning run;
+        # never present it as a candidate plan.
+        if not blocks: continue
+        results.append({'id':f'plan_{len(results)+1}','status':'FEASIBLE','assignments':assignments,'blocks':blocks,'solver_status':solver.StatusName(status),'objective':solver.ObjectiveValue(),'profile':p+1})
     return results

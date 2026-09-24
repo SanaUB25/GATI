@@ -1,7 +1,7 @@
 import { MaintenanceTask } from '../models/MaintenanceTask.js';
 import { Plan } from '../models/Plan.js';
 import { Notification, AuditLog, Department, Role } from '../models/OperationalModels.js';
-import { DatasetImport, Network, Scenario, Station, Train } from '../models/RailwayData.js';
+import { Asset, CorridorAvailability, DatasetImport, DepartmentResource, GoodsForecast, Network, Scenario, Station, Train } from '../models/RailwayData.js';
 
 const page = (value) => Math.max(1, Number(value) || 1);
 const limit = (value) => Math.min(100, Math.max(1, Number(value) || 20));
@@ -16,15 +16,15 @@ export async function listNotifications(userId, query) { return Notification.fin
 export async function markNotificationRead(id, userId) { return Notification.findOneAndUpdate({ _id: id, userId }, { $set: { readAt: new Date() } }, { new: true }).lean(); }
 export async function listAdminData(type) { if (type === 'users') return (await import('../models/User.js')).User.find().select('-passwordHash').lean(); if (type === 'departments') return Department.find().lean(); if (type === 'roles') return Role.find().lean(); if (type === 'dataset-status') { const [maintenance, network, stations, trains, scenarios, latest] = await Promise.all([MaintenanceTask.countDocuments(), Network.countDocuments(), Station.countDocuments(), Train.countDocuments(), Scenario.countDocuments(), DatasetImport.findOne().sort({ createdAt: -1 }).lean()]); return { maintenance, network, stations, trains, scenarios, lastImportAt: latest?.createdAt || null, seedStatus: latest?.status || 'NOT_RUN' }; } return []; }
 export async function listScenarioDelays(count = 1000) { const records = await Scenario.find().sort({ scenarioId: 1 }).limit(Math.min(10000, Math.max(1, Number(count) || 1000))).lean(); return records.map((scenario) => ({ train_delay: scenario.trainDelay, maintenance_overrun: scenario.maintenanceOverrun, traffic_factor: scenario.trafficFactor, asset_risk: scenario.assetRisk, failure_probability: scenario.failureProbability, emergency_event: scenario.emergencyEvent })); }
-export async function getOperationalPlanningData() { const [network, trains] = await Promise.all([Network.find().lean(), Train.find().lean()]); return { network: network.map((section) => ({ section_id: section.sectionId, capacity: section.capacity, single_line: section.singleLine })), trains: trains.map((train) => ({ id: train.trainId, route: train.route, departure: train.departureMin, arrival: train.arrivalMin, priority: train.priority })) }; }
+export async function getOperationalPlanningData(corridorId = 'NDLS-KKDE') { const [network, trains, coa, goods, assets, resources] = await Promise.all([Network.find().lean(), Train.find().lean(), CorridorAvailability.find({ corridorId }).lean(), GoodsForecast.find().lean(), Asset.find().lean(), DepartmentResource.find().lean()]); return { network: network.map((section) => ({ section_id: section.sectionId, capacity: section.capacity, single_line: section.singleLine })), trains: trains.map((train) => ({ id: train.trainId, route: train.route, departure: train.departureMin, arrival: train.arrivalMin, priority: train.priority })), windows: coa.map(x => ({ id: x.coaId, section_id: x.sectionId, start_min: x.startMin, end_min: x.endMin, availability_status: x.availabilityStatus, allowed_departments: x.allowedDepartments })), goods_forecasts: goods.map(x => ({ section_id: x.sectionId, start_min: x.startMin, end_min: x.endMin, capacity_demand: x.capacityDemand })), assets: assets.map(x => ({ asset_id: x.assetId, section_id: x.sectionId, current_availability: x.currentAvailability, failure_impact: x.failureImpact })), resource_capacities: Object.fromEntries(resources.map(x => [x.department, x.capacity])) }; }
 export async function listAudit(query) { return AuditLog.find({ ...(query.entityType ? { entityType: query.entityType } : {}) }).sort({ createdAt: -1 }).limit(100).lean(); }
 export async function getWorkflowOverview(query) {
   const corridorId = query.corridorId || 'NDLS-KKDE';
   const taskFilter = { corridorId };
-  const [tasks, plans, activeBlocks, stations, trackSections] = await Promise.all([
+  const [tasks, plans, activeBlocks, stations, trackSections, coa, goods, assets, resources, trains, stationRecords, networkRecords] = await Promise.all([
     MaintenanceTask.find(taskFilter).sort({ dueAt: 1 }).lean(),
     Plan.find().sort({ createdAt: -1 }).limit(3).lean(),
-    Plan.countDocuments({ status: { $in: ['APPROVED', 'PUBLISHED', 'EXECUTING'] } }), Station.countDocuments(), Network.countDocuments()
+    Plan.countDocuments({ status: { $in: ['APPROVED', 'PUBLISHED', 'EXECUTING'] } }), Station.countDocuments(), Network.countDocuments(), CorridorAvailability.countDocuments({ corridorId }), GoodsForecast.countDocuments(), Asset.countDocuments(), DepartmentResource.countDocuments(), Train.countDocuments(), Station.find().lean(), Network.find().lean()
   ]);
   const byDepartment = ['ENGINEERING', 'SNT', 'TRD'].map((department) => ({ department, tasks: tasks.filter((task) => task.department === department).length }));
   const critical = tasks.filter((task) => task.severity >= 4 && task.status !== 'COMPLETED');
@@ -32,7 +32,7 @@ export async function getWorkflowOverview(query) {
   return {
     corridorId, stations, trackSections, assets: new Set(tasks.map((task) => task.assetId)).size,
     activeMaintenance: tasks.filter((task) => task.status === 'OPEN' || task.status === 'SCHEDULED').length,
-    activeBlocks, criticalAlerts: critical.length, departments: byDepartment, tasks, plans,
+    activeBlocks, criticalAlerts: critical.length, departments: byDepartment, tasks, plans, stationsData: stationRecords, networkData: networkRecords, planningInputs: { coaWindows: coa, goodsForecasts: goods, assets, resources, trains },
     recommendedPlanId: recommended?._id?.toString() || null,
     stages: {
       maintenance: tasks.length ? 'COMPLETED' : 'PENDING', priority: tasks.some((task) => task.priorityScore != null) ? 'COMPLETED' : 'PENDING',

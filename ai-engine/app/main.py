@@ -28,6 +28,9 @@ class Window(BaseModel):
     id: str
     start_min: int = Field(ge=0)
     end_min: int = Field(gt=0)
+    section_id: str = 'default'
+    availability_status: str = 'AVAILABLE'
+    allowed_departments: list[str] = ['ENGINEERING', 'SNT', 'TRD']
 
 class PlanningRequest(BaseModel):
     tasks: list[Task]
@@ -64,6 +67,8 @@ class WorkflowTask(Task):
     latest_end: int = Field(default=1440, ge=1)
     corridor_id: str = 'default'
     resources: list[str] = []
+    urgency: float = Field(default=1, ge=0)
+    availability_impact: float = Field(default=1, ge=0)
 
 class WorkflowRequest(BaseModel):
     tasks: list[WorkflowTask] = Field(min_length=1)
@@ -73,6 +78,10 @@ class WorkflowRequest(BaseModel):
     time_limit_seconds: int = Field(default=30, ge=1, le=300)
     scenario_delays: list[dict] = Field(default_factory=list)
     trains: list[dict] = Field(default_factory=list)
+    goods_forecasts: list[dict] = Field(default_factory=list)
+    resource_capacities: dict[str, int] = Field(default_factory=dict)
+    tradeoff_weights: dict[str, int] = Field(default_factory=dict)
+    safety_margin_min: int = Field(default=10, ge=0)
 
 @app.get('/health')
 def health():
@@ -132,9 +141,10 @@ def workflow_run(request: WorkflowRequest):
     raw_tasks = [task.model_dump() for task in request.tasks]
     scored_tasks = []
     for task in raw_tasks:
-        scoring = priority_factors(task['criticality'], task['severity'], task['overdue_days'], task['weather_risk'], task['asset_importance'], task['season'], task['section_importance'])
+        scoring = priority_factors(task['criticality'], task['severity'], task['overdue_days'], task['weather_risk'], task['asset_importance'], task['season'], task['section_importance'], task['urgency'], task['availability_impact'])
         scored_tasks.append({**task, 'priority_score': scoring['score'], 'priority_factors': scoring})
-    candidates = generate_plans({'tasks': scored_tasks, 'windows': [window.model_dump() for window in request.windows], 'trains': request.trains}, 3, request.time_limit_seconds)
+    bundles = bundle_tasks(scored_tasks)
+    candidates = generate_plans({'tasks': scored_tasks, 'windows': [window.model_dump() for window in request.windows], 'trains': request.trains, 'bundles': bundles, 'goods_forecasts': request.goods_forecasts, 'resource_capacities': request.resource_capacities, 'tradeoff_weights': request.tradeoff_weights, 'safety_margin_min': request.safety_margin_min}, 3, request.time_limit_seconds)
     plans = []
     for index, candidate in enumerate(candidates):
         assignments = candidate['assignments']
@@ -143,11 +153,12 @@ def workflow_run(request: WorkflowRequest):
         outcomes = simulate_imported_scenarios(base_delay, request.scenario_delays[:request.scenario_count]) if request.scenario_delays else simulate_delays(base_delay, request.scenario_count, request.seed + index)
         metrics = summarize_outcomes(outcomes, request.scenario_delays[:request.scenario_count])
         metrics['gati'] = calculate_gati(metrics['mean_delay'], metrics['cvar10_delay'])
-        grouped = {}
-        for item in assignments: grouped.setdefault(item['window_id'], []).append(item['task_id'])
-        plans.append({**candidate, 'metrics': metrics, 'outcomes': outcomes, 'blocks': [{'window_id': window_id, 'task_ids': task_ids} for window_id, task_ids in grouped.items()]})
+        metrics['coverage'] = len({item['task_id'] for item in assignments}) / len(scored_tasks)
+        metrics['asset_downtime_minutes'] = sum(task['duration_min'] * task.get('availability_impact', 1) for task in assigned)
+        metrics['freight_penalty'] = sum(item.get('duration_min', 0) for item in assignments)
+        plans.append({**candidate, 'metrics': metrics, 'outcomes': outcomes})
     all_assignments = [assignment for plan in plans for assignment in plan['assignments']]
-    return {'tasks': scored_tasks, 'bundles': bundle_tasks(scored_tasks), 'conflicts': detect_conflicts(all_assignments, request.trains), 'plans': plans}
+    return {'tasks': scored_tasks, 'bundles': bundles, 'conflicts': detect_conflicts(all_assignments, request.trains, request.safety_margin_min), 'plans': plans}
 
 @app.post('/v1/plans/compare')
 def compare(payload: dict):

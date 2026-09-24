@@ -12,6 +12,9 @@ Files:
 3. trains.csv
 4. maintenance_jobs.csv
 5. scenarios.csv
+6. coa_availability.csv - synthetic Control Office possession windows; BLOCKED windows are never schedulable.
+7. goods_forecast.csv - synthetic freight demand used as an optimizer penalty.
+8. asset_master.csv and department_resources.csv - availability/impact and finite crew capacity inputs.
 
 Core pipeline:
 Input Data -> CP-SAT Optimizer -> Candidate Plans -> Railway Simulator

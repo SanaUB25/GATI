@@ -6,6 +6,7 @@ const maintenanceTaskSchema = new mongoose.Schema({
   department: { type: String, enum: ['ENGINEERING', 'SNT', 'TRD'], required: true, index: true },
   corridorId: { type: String, required: true, index: true },
   assetId: { type: String, required: true },
+  defectType: { type: String, default: 'Inspection' }, urgency: { type: Number, min: 1, max: 5, default: 1 }, availabilityImpact: { type: Number, min: 0, max: 5, default: 1 },
   durationMin: { type: Number, min: 1, required: true },
   dueAt: { type: Date, required: true, index: true },
   severity: { type: Number, min: 1, max: 5, required: true },

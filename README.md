@@ -282,6 +282,16 @@ Published ports are MongoDB `27017`, AI engine `8000`, backend `4000`, and front
 
 ## Final Verification
 
+## SIH planning implementation
+
+The synthetic demo flow is: `TMS/SMMS/TDMS → MaintenanceTask → RiskClock/Priority → COA + timetable + goods forecast + network + assets + resources → block bundler → CP-SAT → simulation/risk/GATI → approval → weekly/monthly → publish`.
+
+`data/raw/coa_availability.csv`, `goods_forecast.csv`, `asset_master.csv`, and `department_resources.csv` are deterministic synthetic Control Office and asset inputs. The seed validates their section references and performs natural-key upserts. TMS, SMMS and TDMS are source adapters for Engineering, S&T and TRD respectively; no live Indian Railways integration is claimed.
+
+RiskClock is deterministic and persisted with factor evidence: `season × (severity×5 + overdue(capped)×4 + criticality×4.5 + weather×3.5 + asset importance×2.5 + section importance×2.5 + urgency×3 + availability impact×2)`, capped at 100. CP-SAT consumes this priority, only uses non-BLOCKED persisted COA windows, protects trains with a safety margin, enforces crew capacity, rewards bundle time saved, and penalizes forecast freight demand. GATI is `0.6 × mean delay + 0.4 × CVaR10 delay` (lower is better). Gemini remains explanation-only.
+
+See [SIH requirements traceability](docs/SIH_REQUIREMENTS_TRACEABILITY.md) for implementation locations, APIs, tests, and honest limitations.
+
 1. Run the seed command successfully to verify backend-to-MongoDB connectivity.
 2. Open `http://localhost:4000/api/health` and expect status `ok`.
 3. Open `http://localhost:8000/health` and expect the AI-engine service name and status `ok`.

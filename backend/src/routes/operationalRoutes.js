@@ -4,7 +4,7 @@ import { analyzeRiskController, explanationController, simulateController } from
 import { authorize } from '../middleware/authorize.js';
 import { body } from 'express-validator';
 import { validateRequest } from '../middleware/validateRequest.js';
-import { adminController, auditController, createPlanController, deletePlanController, emergencyRepairController, notificationReadController, notificationsController, planController, plansController, reportController, riskController, simulationController, statusController, tasksController, updatePlanController, workflowOverviewController } from '../controllers/operationalController.js';
+import { adminController, auditController, createPlanController, deletePlanController, emergencyRepairController, notificationReadController, notificationsController, planController, plansController, reportController, riskController, schedulesController, simulationController, statusController, tasksController, updatePlanController, workflowOverviewController } from '../controllers/operationalController.js';
 
 export const operationalRoutes = Router();
 operationalRoutes.use(authenticate);
@@ -17,6 +17,7 @@ operationalRoutes.get('/planning-runs/:runId/plans', plansController);
 operationalRoutes.get('/plans/:planId', planController);
 operationalRoutes.get('/plans/:planId/simulations', simulationController);
 operationalRoutes.get('/plans/:planId/risk', riskController);
+operationalRoutes.get('/plans/:planId/schedules', schedulesController);
 operationalRoutes.post('/plans', createPlanController);
 operationalRoutes.patch('/plans/:planId', updatePlanController);
 operationalRoutes.delete('/plans/:planId', deletePlanController);

@@ -1,6 +1,6 @@
 import { changePlanStatus, createPlan, deletePlan, getPlan, getWorkflowOverview, listAdminData, listAudit, listNotifications, listPlans, listTasks, markNotificationRead, updatePlan } from '../services/operationalService.js';
 import { repairPlanForEmergency } from '../services/workflowService.js';
-import { evidenceForPlan, transitionPlan } from '../services/workflowService.js';
+import { evidenceForPlan, schedulesForPlan, transitionPlan } from '../services/workflowService.js';
 import { generateCsvReport } from '../services/reportService.js';
 const send = (req, res, data) => res.json({ data, meta: { requestId: req.id } });
 export async function tasksController(req, res, next) { try { send(req, res, await listTasks(req.query)); } catch (error) { next(error); } }
@@ -34,3 +34,4 @@ export async function reportController(req, res, next) {
 }
 export async function workflowOverviewController(req, res, next) { try { send(req, res, await getWorkflowOverview(req.query)); } catch (error) { next(error); } }
 export async function emergencyRepairController(req, res, next) { try { send(req, res, await repairPlanForEmergency(req.params.planId, req.body, req.user.sub, req.id)); } catch (error) { next(error); } }
+export async function schedulesController(req, res, next) { try { send(req, res, await schedulesForPlan(req.params.planId)); } catch (error) { next(error); } }

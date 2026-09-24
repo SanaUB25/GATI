@@ -6,7 +6,6 @@ import { Landing } from '../pages/landing/Landing.jsx';
 import { Dashboard } from '../pages/command-overview/Dashboard.jsx';
 import { AppShell } from '../components/layout/AppShell.jsx';
 import { GatiDashboard, Maintenance, Notifications, Profile, Reports, RiskDashboard, Settings, SimulationResults, Administration } from '../pages/operations/Operations.jsx';
-import { Gemini } from '../pages/gemini/Gemini.jsx';
 import { ApprovalPublish, CandidatePlansPage, NetworkOverview, Workflow, WorkflowStage } from '../pages/workflow/Workflow.jsx';
 import { Bundler, ConflictShield, Explainability, GatiIntelligence, IntelligencePipeline, Optimization, PriorityEngine, RiskAnalysis, RiskClock, Simulation, TradeOff } from '../pages/intelligence/Intelligence.jsx';
 
@@ -23,7 +22,7 @@ export function AppRouter() {
       <Route path="/" element={animated(Dashboard)} /><Route path="/maintenance" element={animated(Maintenance)} />
       <Route path="/plans" element={animated(CandidatePlansPage)} /><Route path="/simulation" element={animated(SimulationResults)} />
       <Route path="/risk" element={animated(RiskDashboard)} /><Route path="/gati" element={animated(GatiDashboard)} />
-      <Route path="/gemini" element={animated(Gemini)} /><Route path="/reports" element={animated(Reports)} />
+      <Route path="/gemini" element={animated(Explainability)} /><Route path="/reports" element={animated(Reports)} />
       <Route path="/intelligence" element={animated(IntelligencePipeline)} /><Route path="/intelligence/riskclock" element={animated(RiskClock)} />
       <Route path="/intelligence/priority" element={animated(PriorityEngine)} /><Route path="/intelligence/bundler" element={animated(Bundler)} />
       <Route path="/intelligence/conflicts" element={animated(ConflictShield)} /><Route path="/intelligence/optimization" element={animated(Optimization)} />

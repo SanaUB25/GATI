@@ -18,7 +18,8 @@ export const PLAN_WORKFLOW = Object.freeze({
   CONFLICT_CHECKED: ['OPTIMIZED'],
   OPTIMIZED: ['SIMULATION_COMPLETE'],
   SIMULATION_COMPLETE: ['APPROVED'],
-  // Existing plans from the earlier human-selection UI can still be approved.
+  // Existing plans from earlier candidate/selection UI versions can still be approved.
+  CANDIDATE: ['APPROVED'],
   SELECTED: ['APPROVED'],
   APPROVED: ['PUBLISHED'],
   PUBLISHED: ['ARCHIVED']

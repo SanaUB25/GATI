@@ -36,3 +36,63 @@
 .plan-card-grid .plan-measures strong { overflow-wrap: normal; word-break: normal; white-space: nowrap; }
 @media (max-width: 1180px) { .plan-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 720px) { .plan-card-grid { grid-template-columns: 1fr; }.plan-card-grid .plan-card { min-height: 0; } }
+
+/* Final operational-dashboard polish: compact, scannable, and responsive. */
+.route-view { background: radial-gradient(circle at 92% 0%, rgba(219,236,252,.7), transparent 30rem), #eef4fa; }
+.content { max-width: 1500px; padding-top: 28px; padding-bottom: 42px; }
+.content > header { align-items: flex-end; }
+.content > header .eyebrow { margin-bottom: 5px; }
+.content h1 { font-size: clamp(28px, 3vw, 40px); line-height: 1.1; }
+.operations-content { gap: 16px; margin-top: 22px; }
+.panel { min-height: 0; padding: clamp(17px, 2vw, 23px); border-radius: 13px; }
+.panel-heading { gap: 12px; }
+.panel-heading h3 { font-size: 17px; }
+.metric-grid { gap: 12px; margin: 18px 0; }
+.metric { min-height: 118px; padding: 16px 18px; border-radius: 12px; }
+.metric strong { margin: 9px 0 4px; font-size: 23px; }
+.metric p, .metric small { font-size: 10px; }
+.workspace { gap: 16px; }
+.toolbar { gap: 8px; }
+.toolbar input, .toolbar select { min-width: 150px; min-height: 38px; padding: 8px 10px; }
+.primary { min-height: 38px; margin-top: 12px; padding: 9px 14px; }
+.toolbar .primary { margin-top: 0; }
+.table-wrap { margin-top: 16px; border-radius: 9px; }
+table { font-size: 11px; }
+th, td { padding: 10px 12px; }
+tbody tr { transition: background .16s ease; }
+tbody tr:hover { background: #f3f9fd; }
+th { background: #f8fbfe; font-size: 9px; }
+.stage-panel { display: grid; grid-template-columns: auto 1fr; column-gap: 16px; align-items: start; }
+.stage-panel .stage-status { grid-column: 1; grid-row: 1; }
+.stage-panel h3, .stage-panel .stage-value, .stage-panel .muted, .stage-panel .table-wrap, .stage-panel .workflow-message { grid-column: 2; }
+.stage-panel .stage-value { margin: 5px 0 2px; font-size: clamp(27px, 4vw, 40px); }
+.candidate-context { display: flex; align-items: center; gap: 9px; padding: 9px 12px; border: 1px solid #d7e6f3; border-radius: 9px; background: rgba(249,252,255,.82); color: #59738e; font-size: 12px; font-weight: 650; }
+.plan-card-grid { align-items: stretch; gap: 14px; }
+.plan-card-grid .plan-card { display: flex; flex-direction: column; min-height: 0; padding: 20px; border-radius: 13px; }
+.plan-card-grid .plan-card .primary { align-self: flex-start; margin-top: auto; text-decoration: none; }
+.plan-card-grid .plan-measures { margin-top: 16px; }
+.plan-card-grid .plan-measures > div { padding: 8px 0; }
+.plan-card-grid .plan-measures span { font-size: 9px; }
+.plan-card-grid .plan-measures strong { font-size: 15px; }
+.workflow-message { padding: 18px; border-radius: 10px; }
+.workflow-message p { font-size: 12px; }
+.skeleton-stack { gap: 10px; }
+.skeleton-stack i { height: 64px; border-radius: 10px; }
+.chart { height: 250px; min-height: 210px; }
+.pie { height: 220px; }
+.sidebar { padding: 20px 12px 14px; }
+.brand { margin-bottom: 25px; }
+.sidebar-label { margin-top: 18px; }
+nav a { padding: 8px 10px; font-size: 12px; }
+.nav-icon { font-size: 15px; }
+.top-navbar { height: 64px; }
+.breadcrumb { margin-bottom: 13px; }
+.approval-panel { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 10px 14px; }
+.approval-panel .stage-status { grid-row: 1; }
+.approval-panel h3, .approval-panel .muted, .approval-panel .primary { grid-column: 2; }
+.approval-panel h3 { margin: 0; }
+.approval-panel .muted { margin: 0; }
+.approval-panel .primary { justify-self: start; margin-top: 0; }
+@media (max-width: 1100px) { .content { padding-inline: 28px; }.metric-grid { grid-template-columns: repeat(3, minmax(0,1fr)); }.plan-card-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+@media (max-width: 760px) { .content { padding: 22px 17px 36px; }.metric-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }.workspace { grid-template-columns: 1fr; }.toolbar > * { flex: 1 1 160px; }.toolbar .primary { width: auto; }.stage-panel { grid-template-columns: 1fr; }.stage-panel .stage-status, .stage-panel h3, .stage-panel .stage-value, .stage-panel .muted, .stage-panel .table-wrap, .stage-panel .workflow-message { grid-column: 1; }.stage-panel .stage-status { grid-row: auto; }.plan-card-grid { grid-template-columns: 1fr; }.top-navbar { height: 60px; }.approval-panel { grid-template-columns: 1fr; }.approval-panel .stage-status, .approval-panel h3, .approval-panel .muted, .approval-panel .primary { grid-column: 1; }.approval-panel .stage-status { grid-row: auto; } }
+@media (max-width: 480px) { .metric-grid { grid-template-columns: 1fr; }.metric { min-height: 96px; }.toolbar > *, .toolbar .primary { width: 100%; }.plan-card-grid .plan-measures { grid-template-columns: repeat(2, minmax(0,1fr)); }.plan-card-grid .plan-measures strong { white-space: normal; overflow-wrap: anywhere; } }

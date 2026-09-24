@@ -3,12 +3,13 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 const links = [
-  ['/', '⌂', 'Command overview'], ['/workflow', '◇', 'Planning workflow'], ['/intelligence', '✦', 'AI intelligence'], ['/network', '⌘', 'Network overview'], ['/maintenance', '⌁', 'Maintenance demand'],
-  ['/plans', '≡', 'Candidate plans'], ['/simulation', '◌', 'Simulation results'],
-  ['/risk', '◒', 'Risk dashboard'], ['/gati', '↗', 'GATI dashboard'],
-  ['/gemini', '✦', 'Gemini assistant'], ['/reports', '▤', 'Reports'],
-  ['/notifications', '●', 'Notifications'], ['/admin', '⌘', 'Administration'],
-  ['/profile', '◉', 'Profile'], ['/settings', '⚙', 'Settings'],
+  ['/', '⌂', 'Command overview'],
+  ['/workflow', '◇', 'Planning workflow'],
+  ['/intelligence', '✦', 'AI workspace'],
+  ['/network', '⌘', 'Network overview'],
+  ['/maintenance', '⌁', 'Maintenance demand'],
+  ['/risk', '◒', 'Risk dashboard'],
+  ['/reports', '▤', 'Reports'],
 ];
 
 export function AppShell() {
@@ -19,7 +20,7 @@ export function AppShell() {
   return <div className="app-shell">
     <aside className={isSidebarOpen ? 'sidebar sidebar-open' : 'sidebar'}>
       <div className="brand"><span className="brand-mark"><i /><i /><i /></span><strong>RAILVISTA</strong></div>
-      <p className="sidebar-label">Control platforms</p>
+      <p className="sidebar-label">Operations</p>
       <nav aria-label="Primary navigation">{links.map(([to, icon, label]) => <NavLink key={to} to={to} end={to === '/'} onClick={closeSidebar}><span className="nav-icon" aria-hidden="true">{icon}</span><span>{label}</span></NavLink>)}</nav>
       <button className="ghost sign-out" onClick={signOut}><span aria-hidden="true">↪</span> Sign out</button>
     </aside>

@@ -310,3 +310,54 @@ The current repository does not define exact Node.js, npm, or Git version pins; 
 
 
  npm run seed --prefix backend
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+cd frontend
+npm install
+npm run dev
+
+
+
+
+
+
+
+cd backend
+npm install
+npm run dev
+
+
+
+
+
+With MongoDB running and backend dependencies installed:
+
+```powershell
+npm run seed --prefix backend
+
+
+
+
+
+
+
+
+
+
+cd ai-engine
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+
+python -m uvicorn app.main:app --app-dir ai-engine --port 8000

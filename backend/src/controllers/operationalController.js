@@ -1,4 +1,4 @@
-import { changePlanStatus, createPlan, deletePlan, getPlan, getWorkflowOverview, listAdminData, listAudit, listNotifications, listPlans, listTasks, markNotificationRead, updatePlan } from '../services/operationalService.js';
+import { changePlanStatus, createPlan, deletePlan, getBlockPlanningWorkspace, getBundlerWorkspace, getCoaWorkspace, getConflictShieldWorkspace, getGoodsForecastWorkspace, getPlan, getRiskClockAnalysis, getTimetableWorkspace, getWorkflowOverview, listAdminData, listAudit, listNotifications, listPlans, listTasks, markNotificationRead, updatePlan } from '../services/operationalService.js';
 import { repairPlanForEmergency } from '../services/workflowService.js';
 import { evidenceForPlan, schedulesForPlan, transitionPlan } from '../services/workflowService.js';
 import { generateCsvReport } from '../services/reportService.js';
@@ -33,5 +33,12 @@ export async function reportController(req, res, next) {
   }
 }
 export async function workflowOverviewController(req, res, next) { try { send(req, res, await getWorkflowOverview(req.query)); } catch (error) { next(error); } }
+export async function riskClockController(req, res, next) { try { send(req, res, await getRiskClockAnalysis(req.query)); } catch (error) { next(error); } }
+export async function blockPlanningController(req, res, next) { try { send(req, res, await getBlockPlanningWorkspace(req.query)); } catch (error) { next(error); } }
+export async function coaController(req, res, next) { try { send(req, res, await getCoaWorkspace(req.query)); } catch (error) { next(error); } }
+export async function timetableController(req, res, next) { try { send(req, res, await getTimetableWorkspace(req.query)); } catch (error) { next(error); } }
+export async function bundlerController(req, res, next) { try { send(req, res, await getBundlerWorkspace(req.query)); } catch (error) { next(error); } }
+export async function goodsForecastController(req, res, next) { try { send(req, res, await getGoodsForecastWorkspace(req.query)); } catch (error) { next(error); } }
+export async function conflictShieldController(req, res, next) { try { send(req, res, await getConflictShieldWorkspace(req.query)); } catch (error) { next(error); } }
 export async function emergencyRepairController(req, res, next) { try { send(req, res, await repairPlanForEmergency(req.params.planId, req.body, req.user.sub, req.id)); } catch (error) { next(error); } }
 export async function schedulesController(req, res, next) { try { send(req, res, await schedulesForPlan(req.params.planId)); } catch (error) { next(error); } }

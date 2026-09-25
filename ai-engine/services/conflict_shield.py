@@ -1,3 +1,5 @@
+from services.optimizer import train_occupies_section
+
 def detect_conflicts(assignments: list[dict], trains: list[dict] | None = None, safety_margin_min: int = 10) -> list[dict]:
     """Classify candidate overlaps; callers can render SAFE versus UNSAFE explicitly."""
     conflicts = []
@@ -15,9 +17,8 @@ def detect_conflicts(assignments: list[dict], trains: list[dict] | None = None, 
     for assignment in assignments:
         start, end = assignment.get('start_min', 0), assignment.get('end_min', 0)
         for train in trains:
-            uses_section = assignment.get('section_id') in train.get('route', [])
-            occupies = max(start - safety_margin_min, train.get('departure', 0)) < min(end + safety_margin_min, train.get('arrival', 0))
-            if uses_section and occupies:
+            occupies = train_occupies_section(train, assignment.get('section_id'), start, end, safety_margin_min)
+            if occupies:
                 conflicts.append({'classification': 'UNSAFE', 'type': 'TRAIN_TIMETABLE', 'task_ids': [assignment['task_id']],
                                   'section_id': assignment.get('section_id'), 'train_id': train.get('id'),
                                   'reason': f'{safety_margin_min} minute safety margin infringed'})

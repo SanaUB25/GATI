@@ -50,14 +50,19 @@ export async function executeWorkflow(input, actorId, requestId) {
     const [scenarioDelays, operationalData] = await Promise.all([listScenarioDelays(input.scenarioCount || 1000), getOperationalPlanningData(corridorId)]);
     if (!operationalData.windows.length) { const error = new Error('No persisted COA availability records loaded for corridor'); error.statusCode = 422; throw error; }
     const result = await aiRequest('/v1/workflow/run', { tasks: aiTasks, scenario_count: input.scenarioCount || 1000, seed: input.seed || 42, time_limit_seconds: input.timeLimitSeconds || 30, scenario_delays: scenarioDelays, tradeoff_weights: input.tradeoffWeights || {}, ...operationalData });
-    if (!result.plans?.length) { const error = new Error('Optimizer found no feasible candidate plans'); error.statusCode = 422; throw error; }
+    if (!result.plans?.length) {
+      const profiles = result.optimization?.profiles || [];
+      const infeasible = profiles.length > 0 && profiles.every((profile) => profile.status === 'INFEASIBLE');
+      await PlanningRun.updateOne({ _id: run._id }, { $set: { status: infeasible ? 'INFEASIBLE' : 'FAILED', optimization: result.optimization } });
+      const error = new Error(infeasible ? 'CP-SAT model is infeasible for the persisted planning inputs' : 'Optimizer found no feasible candidate plans'); error.statusCode = 422; error.optimizationStatus = infeasible ? 'INFEASIBLE' : 'FAILED'; throw error;
+    }
     await MaintenanceTask.bulkWrite(result.tasks.map((task) => ({ updateOne: { filter: { _id: task.id }, update: { $set: { priorityScore: task.priority_score, priorityFactors: task.priority_factors } } } })));
     const persist = async (session) => {
       const options = session ? { session } : undefined;
-      const plans = await Plan.insertMany(result.plans.map((candidate, index) => ({ runId: run._id, name: `Candidate ${index + 1}`, status: 'SIMULATION_COMPLETE', blocks: candidate.blocks.map((block) => ({ windowId: block.window_id, bundleId: block.bundle_id, sectionId: block.section_id, departments: block.departments, taskIds: block.task_ids, startMin: block.start_min, endMin: block.end_min, durationMin: block.duration_min })), metrics: metricMap(candidate.metrics), solver: { status: candidate.solver_status, objective: candidate.objective } })), options);
+      const plans = await Plan.insertMany(result.plans.map((candidate, index) => ({ runId: run._id, name: `Candidate ${index + 1}`, status: 'SIMULATION_COMPLETE', blocks: candidate.blocks.map((block) => ({ windowId: block.window_id, bundleId: block.bundle_id, sectionId: block.section_id, departments: block.departments, taskIds: block.task_ids, startMin: block.start_min, endMin: block.end_min, durationMin: block.duration_min })), metrics: metricMap(candidate.metrics), solver: { status: candidate.solver_status, objective: candidate.objective, timeSeconds: candidate.solver_evidence?.solve_time_seconds, profile: candidate.profile, decisionVariables: candidate.solver_evidence?.decision_variables, constraints: candidate.solver_evidence?.constraints, weights: candidate.solver_evidence?.weights, objectiveDescription: candidate.solver_evidence?.objective_description } })), options);
       await SimulationResult.insertMany(plans.map((plan, index) => ({ planId: plan._id, runId: run._id, scenarioCount: input.scenarioCount || 1000, seed: (input.seed || 42) + index, outcomes: result.plans[index].outcomes })), options);
       await RiskReport.insertMany(plans.map((plan, index) => ({ planId: plan._id, runId: run._id, ...metricMap(result.plans[index].metrics) })), options);
-      await PlanningRun.updateOne({ _id: run._id }, { $set: { status: 'COMPLETED' } }, options);
+      await PlanningRun.updateOne({ _id: run._id }, { $set: { status: 'COMPLETED', optimization: result.optimization } }, options);
       await Notification.create([{ userId: actorId, type: 'SIMULATION_COMPLETED', title: 'Planning simulation completed', message: `${plans.length} candidate plans are ready for risk review.` }], options);
       await AuditLog.create([{ actorId, action: 'WORKFLOW_EXECUTED', entityType: 'PlanningRun', entityId: String(run._id), requestId, metadata: { candidateCount: plans.length } }], options);
     };
@@ -70,7 +75,7 @@ export async function executeWorkflow(input, actorId, requestId) {
       }
     } finally { await session.endSession(); }
     return { run: await PlanningRun.findById(run._id).lean(), plans: await Plan.find({ runId: run._id }).sort({ 'metrics.gati': 1 }).lean(), bundles: result.bundles, conflicts: result.conflicts };
-  } catch (error) { await PlanningRun.updateOne({ _id: run._id }, { $set: { status: 'FAILED', errorDetail: error.message } }); throw error; }
+  } catch (error) { await PlanningRun.updateOne({ _id: run._id }, { $set: { status: error.optimizationStatus || 'FAILED', errorDetail: error.message } }); throw error; }
 }
 
 export async function transitionPlan(planId, status, actorId, comment, requestId) {

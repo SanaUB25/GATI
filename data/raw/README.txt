@@ -12,7 +12,12 @@ Files:
 3. trains.csv
 4. maintenance_jobs.csv
 5. scenarios.csv
-6. coa_availability.csv - synthetic Control Office possession windows; BLOCKED windows are never schedulable.
+6. coa_availability.csv - synthetic Control Office possession windows. Schema:
+   coa_id, date, section_id, corridor, start_min, end_min, availability_status,
+   capacity, possession_type, allowed_departments. All section IDs reference
+   network.csv. AVAILABLE and RESTRICTED windows are planning inputs; BLOCKED
+   windows are never schedulable. This is deterministic demo data, not a live
+   Indian Railways Control Office feed.
 7. goods_forecast.csv - synthetic freight demand used as an optimizer penalty.
 8. asset_master.csv and department_resources.csv - availability/impact and finite crew capacity inputs.
 

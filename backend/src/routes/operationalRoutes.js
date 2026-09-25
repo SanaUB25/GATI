@@ -4,12 +4,19 @@ import { analyzeRiskController, explanationController, simulateController } from
 import { authorize } from '../middleware/authorize.js';
 import { body } from 'express-validator';
 import { validateRequest } from '../middleware/validateRequest.js';
-import { adminController, auditController, createPlanController, deletePlanController, emergencyRepairController, notificationReadController, notificationsController, planController, plansController, reportController, riskController, schedulesController, simulationController, statusController, tasksController, updatePlanController, workflowOverviewController } from '../controllers/operationalController.js';
+import { adminController, auditController, blockPlanningController, bundlerController, coaController, conflictShieldController, createPlanController, deletePlanController, emergencyRepairController, goodsForecastController, notificationReadController, notificationsController, planController, plansController, reportController, riskClockController, riskController, schedulesController, simulationController, statusController, tasksController, timetableController, updatePlanController, workflowOverviewController } from '../controllers/operationalController.js';
 
 export const operationalRoutes = Router();
 operationalRoutes.use(authenticate);
 operationalRoutes.get('/tasks', tasksController);
 operationalRoutes.get('/workflow/overview', workflowOverviewController);
+operationalRoutes.get('/intelligence/riskclock', riskClockController);
+operationalRoutes.get('/intelligence/block-planning', blockPlanningController);
+operationalRoutes.get('/intelligence/coa', coaController);
+operationalRoutes.get('/intelligence/timetable', timetableController);
+operationalRoutes.get('/intelligence/bundler', bundlerController);
+operationalRoutes.get('/intelligence/goods-forecast', goodsForecastController);
+operationalRoutes.get('/intelligence/conflict-shield', conflictShieldController);
 operationalRoutes.post('/intelligence/simulations', simulateController);
 operationalRoutes.post('/intelligence/risk-analysis', analyzeRiskController);
 operationalRoutes.post('/intelligence/explanations', explanationController);

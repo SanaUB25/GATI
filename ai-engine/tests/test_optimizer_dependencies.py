@@ -1,4 +1,5 @@
 from services.optimizer import generate_plans
+from services.conflict_shield import detect_conflicts
 
 
 def base_payload():
@@ -23,3 +24,19 @@ def test_freight_weight_changes_objective():
     low = generate_plans({**payload, 'tradeoff_weights': {'freight': 1}}, 1)[0]['objective']
     high = generate_plans({**payload, 'tradeoff_weights': {'freight': 100}}, 1)[0]['objective']
     assert high < low
+
+
+def test_forecast_capacity_demand_changes_objective():
+    payload = base_payload()
+    low = generate_plans({**payload, 'goods_forecasts': [{'section_id': 'S1', 'start_min': 100, 'end_min': 160, 'capacity_demand': .2}]}, 1)[0]['objective']
+    high = generate_plans({**payload, 'goods_forecasts': [{'section_id': 'S1', 'start_min': 100, 'end_min': 160, 'capacity_demand': .9}]}, 1)[0]['objective']
+    assert high < low
+
+
+def test_conflict_shield_reports_protected_train_overlap():
+    conflicts = detect_conflicts(
+        [{'task_id': 'a', 'window_id': 'COA-001', 'section_id': 'S02', 'start_min': 690, 'end_min': 730, 'resources': ['ENGINEERING']}],
+        [{'id': 'T005', 'route': ['S02'], 'departure': 570, 'arrival': 735}],
+        safety_margin_min=10,
+    )
+    assert conflicts == [{'classification': 'UNSAFE', 'type': 'TRAIN_TIMETABLE', 'task_ids': ['a'], 'section_id': 'S02', 'train_id': 'T005', 'reason': '10 minute safety margin infringed'}]

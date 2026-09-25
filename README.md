@@ -304,3 +304,9 @@ See [SIH requirements traceability](docs/SIH_REQUIREMENTS_TRACEABILITY.md) for i
 ## Missing Implementation Confirmed During Inspection
 
 The current repository does not define exact Node.js, npm, or Git version pins; a frontend `.env.example`; AI-engine environment loading; active Gemini SDK integration; backend or AI build scripts; frontend, backend, or API test suites; a MongoDB verification script; or seeded planning/simulation/report fixtures. These must be added before claiming those capabilities as fully production-ready.
+
+
+
+
+
+ npm run seed --prefix backend

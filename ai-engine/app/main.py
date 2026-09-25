@@ -144,7 +144,7 @@ def workflow_run(request: WorkflowRequest):
         scoring = priority_factors(task['criticality'], task['severity'], task['overdue_days'], task['weather_risk'], task['asset_importance'], task['season'], task['section_importance'], task['urgency'], task['availability_impact'])
         scored_tasks.append({**task, 'priority_score': scoring['score'], 'priority_factors': scoring})
     bundles = bundle_tasks(scored_tasks)
-    candidates = generate_plans({'tasks': scored_tasks, 'windows': [window.model_dump() for window in request.windows], 'trains': request.trains, 'bundles': bundles, 'goods_forecasts': request.goods_forecasts, 'resource_capacities': request.resource_capacities, 'tradeoff_weights': request.tradeoff_weights, 'safety_margin_min': request.safety_margin_min}, 3, request.time_limit_seconds)
+    candidates, optimization = generate_plans({'tasks': scored_tasks, 'windows': [window.model_dump() for window in request.windows], 'trains': request.trains, 'bundles': bundles, 'goods_forecasts': request.goods_forecasts, 'resource_capacities': request.resource_capacities, 'tradeoff_weights': request.tradeoff_weights, 'safety_margin_min': request.safety_margin_min}, 3, request.time_limit_seconds, diagnostics=True)
     plans = []
     for index, candidate in enumerate(candidates):
         assignments = candidate['assignments']
@@ -158,7 +158,7 @@ def workflow_run(request: WorkflowRequest):
         metrics['freight_penalty'] = sum(item.get('duration_min', 0) for item in assignments)
         plans.append({**candidate, 'metrics': metrics, 'outcomes': outcomes})
     all_assignments = [assignment for plan in plans for assignment in plan['assignments']]
-    return {'tasks': scored_tasks, 'bundles': bundles, 'conflicts': detect_conflicts(all_assignments, request.trains, request.safety_margin_min), 'plans': plans}
+    return {'tasks': scored_tasks, 'bundles': bundles, 'conflicts': detect_conflicts(all_assignments, request.trains, request.safety_margin_min), 'plans': plans, 'optimization': optimization}
 
 @app.post('/v1/plans/compare')
 def compare(payload: dict):

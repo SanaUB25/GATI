@@ -2,6 +2,13 @@ import { api } from './client.js';
 
 export const operationsApi = {
   workflowOverview: (params = {}) => api.get('/workflow/overview', { params }),
+  riskClock: (params = {}) => api.get('/intelligence/riskclock', { params }),
+  blockPlanning: (params = {}) => api.get('/intelligence/block-planning', { params }),
+  coa: (params = {}) => api.get('/intelligence/coa', { params }),
+  timetable: (params = {}) => api.get('/intelligence/timetable', { params }),
+  bundler: (params = {}) => api.get('/intelligence/bundler', { params }),
+  goodsForecast: (params = {}) => api.get('/intelligence/goods-forecast', { params }),
+  conflictShield: (params = {}) => api.get('/intelligence/conflict-shield', { params }),
   simulate: (payload) => api.post('/intelligence/simulations', payload),
   analyzeRisk: (outcomes) => api.post('/intelligence/risk-analysis', { outcomes }),
   explanation: (payload) => api.post('/intelligence/explanations', payload),

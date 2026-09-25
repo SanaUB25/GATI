@@ -26,8 +26,9 @@ export function AppRouter() {
   return <AnimatePresence mode="wait"><Routes location={location} key={location.pathname}>
     <Route path="/landing" element={<Landing />} />
     <Route path="/login" element={animated(Login)} />
+    <Route path="/" element={<Navigate to="/landing" replace />} />
     <Route element={<Protected><AppShell /></Protected>}>
-      <Route path="/" element={animated(Dashboard)} /><Route path="/maintenance" element={animated(Maintenance)} />
+      <Route path="/dashboard" element={animated(Dashboard)} /><Route path="/maintenance" element={animated(Maintenance)} />
       <Route path="/plans" element={animated(CandidatePlansPage)} /><Route path="/simulation" element={animated(SimulationResults)} />
       <Route path="/risk" element={animated(RiskDashboard)} /><Route path="/gati" element={animated(GatiDashboard)} />
       <Route path="/gemini" element={animated(Explainability)} /><Route path="/reports" element={animated(Reports)} />

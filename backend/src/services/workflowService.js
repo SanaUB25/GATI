@@ -8,6 +8,8 @@ import { aiRequest } from './aiEngineService.js';
 import { getOperationalPlanningData, listScenarioDelays } from './operationalService.js';
 
 const metricMap = (m = {}) => ({ meanDelay: m.mean_delay, p95Delay: m.p95_delay, cvar10: m.cvar10_delay, cascadeProbability: m.cascade_probability, emergencyRate: m.emergency_rate, gati: m.gati, coverage: m.coverage, assetDowntimeMinutes: m.asset_downtime_minutes, freightPenalty: m.freight_penalty });
+const TRADEOFF_WEIGHT_KEYS = ['priority', 'freight', 'downtime'];
+const normalizedTradeoffWeights = (weights = {}) => Object.fromEntries(TRADEOFF_WEIGHT_KEYS.filter((key) => Number.isInteger(weights[key]) && weights[key] >= 0).map((key) => [key, weights[key]]));
 // These are the only forward transitions for a railway plan.  The planner executes
 // the first five automated stages together, so persisted candidates are ready at
 // SIMULATION_COMPLETE for the human approval gate.
@@ -44,12 +46,19 @@ export async function executeWorkflow(input, actorId, requestId) {
   const tasks = input.tasks?.length ? input.tasks : await MaintenanceTask.find({ corridorId: input.corridorId, status: { $in: ['OPEN', 'SCHEDULED'] } }).lean();
   if (!tasks.length) { const error = new Error('No eligible maintenance tasks found'); error.statusCode = 400; throw error; }
   const corridorId = input.corridorId || tasks[0].corridorId || 'default';
-  const run = await PlanningRun.create({ corridorId, horizon: input.horizon || { from: new Date(), to: new Date(Date.now() + 7 * 86400000) }, status: 'RUNNING', scenarioCount: input.scenarioCount || 1000, configVersion: 'v1' });
+  if (input.baselineRunId) {
+    const baseline = await PlanningRun.findById(input.baselineRunId).select('corridorId status').lean();
+    if (!baseline || baseline.corridorId !== corridorId || baseline.status !== 'COMPLETED') {
+      const error = new Error('The selected baseline run is not a completed run for this corridor'); error.statusCode = 422; throw error;
+    }
+  }
+  const tradeoffWeights = normalizedTradeoffWeights(input.tradeoffWeights);
+  const run = await PlanningRun.create({ corridorId, horizon: input.horizon || { from: new Date(), to: new Date(Date.now() + 7 * 86400000) }, status: 'RUNNING', scenarioCount: input.scenarioCount || 1000, parentRunId: input.baselineRunId || undefined, tradeoffWeights, configVersion: 'v1' });
   try {
     const aiTasks = tasks.map((task) => ({ id: String(task._id || task.id), duration_min: task.durationMin ?? task.duration_min, priority_score: task.priorityScore ?? task.priority_score ?? 0, criticality: task.criticality ?? 1, severity: task.severity ?? 1, urgency: task.urgency ?? task.criticality ?? 1, availability_impact: task.availabilityImpact ?? 1, overdue_days: task.overdueDays ?? 0, weather_risk: task.weatherFactor ?? task.weatherRisk ?? 0, season: task.season ?? 'Other', asset_importance: task.assetImportance ?? 1, section_id: task.sectionId ?? task.assetId, earliest_start: task.windowEarliestMin ?? 0, latest_end: task.windowLatestMin ?? 1440, corridor_id: task.corridorId ?? corridorId, resources: task.resources ?? [], resource: task.resource ?? 'track', department: task.department }));
     const [scenarioDelays, operationalData] = await Promise.all([listScenarioDelays(input.scenarioCount || 1000), getOperationalPlanningData(corridorId)]);
     if (!operationalData.windows.length) { const error = new Error('No persisted COA availability records loaded for corridor'); error.statusCode = 422; throw error; }
-    const result = await aiRequest('/v1/workflow/run', { tasks: aiTasks, scenario_count: input.scenarioCount || 1000, seed: input.seed || 42, time_limit_seconds: input.timeLimitSeconds || 30, scenario_delays: scenarioDelays, tradeoff_weights: input.tradeoffWeights || {}, ...operationalData });
+    const result = await aiRequest('/v1/workflow/run', { tasks: aiTasks, scenario_count: input.scenarioCount || 1000, seed: input.seed || 42, time_limit_seconds: input.timeLimitSeconds || 30, scenario_delays: scenarioDelays, tradeoff_weights: tradeoffWeights, ...operationalData });
     if (!result.plans?.length) {
       const profiles = result.optimization?.profiles || [];
       const infeasible = profiles.length > 0 && profiles.every((profile) => profile.status === 'INFEASIBLE');

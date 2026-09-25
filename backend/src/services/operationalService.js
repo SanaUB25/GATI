@@ -155,7 +155,7 @@ export async function getWorkflowOverview(query) {
     corridorId, stations, trackSections, assets: new Set(tasks.map((task) => task.assetId)).size,
     activeMaintenance: tasks.filter((task) => task.status === 'OPEN' || task.status === 'SCHEDULED').length,
     activeBlocks, criticalAlerts: critical.length, departments: byDepartment, tasks, plans, stationsData: stationRecords, networkData: networkRecords, planningInputs: { coaWindows: coa, goodsForecasts: goods, assets, resources, trains },
-    optimizationRun: latestRun ? { id: String(latestRun._id), status: latestRun.status, errorDetail: latestRun.errorDetail, evidence: latestRun.optimization || null } : null,
+    optimizationRun: latestRun ? { id: String(latestRun._id), parentRunId: latestRun.parentRunId ? String(latestRun.parentRunId) : null, status: latestRun.status, errorDetail: latestRun.errorDetail, evidence: latestRun.optimization || null } : null,
     recommendedPlanId: recommended?._id?.toString() || null,
     stages: {
       maintenance: tasks.length ? 'COMPLETED' : 'PENDING', priority: tasks.some((task) => task.priorityScore != null) ? 'COMPLETED' : 'PENDING',

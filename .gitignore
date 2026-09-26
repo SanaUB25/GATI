@@ -8,7 +8,7 @@ __pycache__/
 *.log
 coverage/
 .vscode/
-*.csv
+ 
  
 *.xlsx
 production-exports/

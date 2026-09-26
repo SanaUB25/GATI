@@ -1,0 +1,7 @@
+asset_id,asset_type,department,section_id,criticality,importance,current_availability,failure_impact
+S02,TRACK,ENGINEERING,S02,5,5,0.82,5
+S03,SIGNAL,SNT,S03,4,4,0.90,4
+S04,OHE,TRD,S04,5,5,0.80,5
+S05,SIGNAL,SNT,S05,5,5,0.78,5
+S06,OHE,TRD,S06,4,4,0.88,4
+S07,TRACK,ENGINEERING,S07,3,3,0.94,3

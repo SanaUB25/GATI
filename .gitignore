@@ -9,10 +9,7 @@ __pycache__/
 coverage/
 .vscode/
 *.csv
-!data/raw/coa_availability.csv
-!data/raw/goods_forecast.csv
-!data/raw/asset_master.csv
-!data/raw/department_resources.csv
+ 
 *.xlsx
 production-exports/
 .venv/
